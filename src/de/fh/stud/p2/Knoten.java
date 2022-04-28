@@ -2,122 +2,196 @@ package de.fh.stud.p2;
 
 import de.fh.pacman.enums.PacmanTileType;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-public class Knoten {
-	
-	/*
-	 * TODO Praktikum 2 [1]: Erweitert diese Klasse um die notwendigen
-	 * Attribute, Methoden und Konstruktoren um die möglichen verschiedenen Weltzustände darstellen und
-	 * einen Suchbaum aufspannen zu können.
-	 */
-	private Knoten vorgaenger;
-	private	PacmanTileType[][] world;
-	private int posX;
-	private int posY;
+public class Knoten implements Comparable<Knoten>{
+
+	private Knoten parent;
+	private final List<Knoten> children;
+	private final PacmanTileType[][] world;
+	private final int posX;
+	private final int posY;
 	private int cost;
 
-	public Knoten(Knoten vorgaenger, PacmanTileType[][] world, int posX, int posY, int cost){
-		this.vorgaenger = vorgaenger;
-		this.world = world;
+	public Knoten(PacmanTileType[][] world, int posX, int posY, int cost){
+		parent = null;
+		children = new LinkedList<>();
+		this.world = copyWorld(world);
 		this.posX = posX;
 		this.posY = posY;
 		this.cost = cost;
 	}
 
-	public Knoten(Knoten vorgaenger, PacmanTileType[][] world, int posX, int posY) {
-		this.vorgaenger = vorgaenger;
-		this.world = world;
+	public Knoten(PacmanTileType[][] world, int posX, int posY){
+		parent = null;
+		children = new LinkedList<>();
+		this.world = copyWorld(world);
 		this.posX = posX;
 		this.posY = posY;
+		this.cost = 0;
 	}
 
-	public Knoten(Knoten vorgaenger, PacmanTileType[][] world) {
-		this.vorgaenger = vorgaenger;
-		this.world = world;
+	public PacmanTileType[][] getWorld(){ return world; }
+
+	public Knoten getParent() { return parent; }
+
+	public int getPosX(){ return posX; }
+
+	public int getPosY() { return posY; }
+
+	public int getCost() { return cost; }
+
+	public void setCost(int cost) { this.cost = cost; }
+
+	public int hashCode() {
+		return Arrays.deepHashCode(this.world);
 	}
 
-	public Knoten() {
-	}
-
-	public Knoten getVorgaenger() {
-		return vorgaenger;
-	}
-
-	public PacmanTileType[][] getWorld() {
-		return world;
-	}
-
-	public int getPosX() {
-		return posX;
-	}
-
-	public int getPosY() {
-		return posY;
-	}
-
-	public int getCost() {
-		return cost;
-	}
-
-	public PacmanTileType[][] deepClone(PacmanTileType[][] world) {
-		PacmanTileType[][] clone = new PacmanTileType[world.length][world[0].length];
-
-		for(int i = 0; i < world.length; i++) {
-			for(int j = 0; j < world[i].length; j++) {
-				clone[i][j] = world[i][j];
-			}
+	/**
+	 * Kopiert die alle Werte der übergebenden World einzeln in eine neue World um
+	 * eine Referenzierung der übergebenden World zu verhindern.
+	 *
+	 * @param world PacmanTileType[][]
+	 * @return copy of param world without reference
+	 */
+	private PacmanTileType[][] copyWorld(PacmanTileType[][] world){
+		PacmanTileType[][] copy = null;
+		if(world != null){
+			int lenX = world.length, lenY = world[0].length;
+			copy = new PacmanTileType[lenX][lenY];
+			for (int x = 0; x < lenX; x++)
+				for (int y = 0; y < lenY; y++)
+					copy[x][y] = world[x][y];
 		}
-
-		return clone;
+		return copy;
 	}
 
-	public boolean worldEmpty(){
-		for(int i = 0; i < world.length; i++) {
-			for(int j = 0; j < world[i].length; j++) {
-				if(world[i][j] == PacmanTileType.DOT) return false;
+	/**
+	 * Simuliert in einer kopierten World den Weg zum Tile auf der Position x und y.
+	 * Die aktuelle Position wird auf Empty gesetzt und die neue übergebende Position in
+	 * der kopierten Welt wird auf Pacman gesetzt.
+	 *
+	 * @param x Position auf der X-Achse
+	 * @param y Position auf der Y-Achse
+	 * @return Knoten mit der kopierten Welt, neuen Positionen und den Kosten 1 für Dot und 2 für Empty
+	 */
+	private Knoten simulateGoingToXY(int x, int y){
+		if(world != null){
+			PacmanTileType nextTile = world[x][y];
+			PacmanTileType[][] newWorld = copyWorld(world);
+			if(nextTile.equals(PacmanTileType.DOT) || nextTile.equals(PacmanTileType.EMPTY))
+				if(newWorld[x][y] != PacmanTileType.WALL) {
+					newWorld[posX][posY] = PacmanTileType.EMPTY;
+					newWorld[x][y] = PacmanTileType.PACMAN;
+					return new Knoten(newWorld, x, y, 1);
+				}
+			return null;
+		}
+		return null;
+	}
+
+	/**
+	 * Überprüft ob die Welt des aktuellen Knotens noch Dots besitzt
+	 *
+	 * @return Wenn Dots vorhanden wird false zurückgegeben ansonsten true
+	 */
+	public boolean worldCleared(){
+		if(world != null){
+			int lenX = world.length, lenY = world[0].length;
+			for (PacmanTileType[] pacmanTileTypes : world) {
+				int y = 0;
+				while (y < lenY) {
+					if (pacmanTileTypes[y] == PacmanTileType.DOT)
+						return false;
+					y++;
+				}
 			}
 		}
 		return true;
 	}
 
-	private void checkNeighborTiles(int x, int y, List<Knoten> nachfolger) {
-		/**
-		 * Kopiere aktuelle Spielwelt in ein neues Array
-		 */
-		PacmanTileType[][] tiles = this.deepClone(this.world);
-
-		/* Prüfe Tile von der aktuellen Position plus Wert der Parameter x und y*/
-		PacmanTileType currentTile = tiles[getPosX()+x][getPosY()+y];
-
-		tiles[getPosX()+x][getPosY()+y] = PacmanTileType.PACMAN;
-		tiles[getPosX()][getPosY()] = PacmanTileType.EMPTY;
-
-		if(currentTile == PacmanTileType.DOT)
-			nachfolger.add(new Knoten(this, tiles, getPosX()+x, getPosY()+y,1));
-		else if(currentTile == PacmanTileType.EMPTY)
-			nachfolger.add(new Knoten(this, tiles, getPosX()+x, getPosY()+y,2));
+	/**
+	 * Heuristik für die Greedy-Search und A*. Es zählt die Dots die in der World vorhanden
+	 * sind. Das Ergebnis schätzt den Weg zu allen Dots die in der Welt existieren.
+	 *
+	 * @return
+	 */
+	public int heuristik() {
+		int a = 0;
+		for (PacmanTileType[] pacmanTileTypes : world)
+			for (PacmanTileType pacmanTileType : pacmanTileTypes)
+				if (pacmanTileType == PacmanTileType.DOT)
+					a++;
+		return a;
 	}
 
+	/**
+	 * Vergleicht die aktuelle World mit der World des übergebenden Knotens
+	 *
+	 * @param o Übergebender Knoten als allgemeines Objekt
+	 * @return true - beide Worlds sind identisch, false - Worlds sind nicht identisch
+	 */
+	@Override
+	public boolean equals(Object o) {
+		Knoten compare = (Knoten) o;
+		return Arrays.deepEquals(this.getWorld(), compare.getWorld());
+	}
+
+	/**
+	 * Vergleicht die Kosten des aktuellen Knotens und des übergebenden Knotens. Wichtig für
+	 * das Sortieren der OpenList durch die Collections.
+	 *
+	 * @param o Knoten mit dem verglichen werden soll
+	 * @return Differenz der Kosten - bei >0 wird aufsteigend sortiert - bei <0 wird absteigend sortiert
+	 */
+	@Override
+	public int compareTo(Knoten o) {
+		return this.getCost() - o.getCost() ;
+	}
+
+	/**
+	 * Gibt die Daten des Knoten als String aus
+	 *
+	 * @return String mit den ganzen Daten von Knoten
+	 */
+	@Override
+	public String toString() {
+		return "Xpos: " + getPosX() + " Ypos: " + getPosY() + " Kosten: " + getCost();
+	}
+
+	/**
+	 * Expandiert den aktuellen Knoten. Mögliche Nachfolger sind Norden, Osten, Westen und Süden.
+	 * Je nachdem ob es einen Nachfolger in diesen Richtungen gibt wird dieser in eine Liste gespeichert.
+	 *
+	 * @return Gibt eine Liste mit den Nachfolgern aus
+	 */
 	public List<Knoten> expand() {
 		/*
 		 * TODO Praktikum 2 [2]: Implementiert in dieser Methode das Expandieren des Knotens.
 		 * Die Methode soll die neu erzeugten Knoten (die Kinder des Knoten) zurückgeben.
 		 */
-		List<Knoten> nachfolger = new LinkedList<Knoten>();
+		if(posX-1 > -1 && posY-1 > -1 && posX+1 < world.length && posY+1 < world[0].length ) {
+			Knoten goingNorth = this.simulateGoingToXY(posX, posY - 1);
+			if (goingNorth != null)
+				children.add(goingNorth);
 
-		nachfolger.add(this);
-		checkNeighborTiles(-1, 0, nachfolger);
-		checkNeighborTiles(1, 0, nachfolger);
-		checkNeighborTiles(0, -1, nachfolger);
-		checkNeighborTiles(0, 1, nachfolger);
+			Knoten goingEast = this.simulateGoingToXY(posX + 1, posY);
+			if (goingEast != null)
+				children.add(goingEast);
 
-		return nachfolger;
-	}
+			Knoten goingSouth = this.simulateGoingToXY(posX, posY + 1);
+			if (goingSouth != null)
+				children.add(goingSouth);
 
-	@Override
-	public String toString() {
-		return "Pos X: " + getPosX() + " Pos Y: " + getPosY();
+			Knoten goingWest = this.simulateGoingToXY(posX - 1, posY);
+			if (goingWest != null)
+				children.add(goingWest);
+
+			for (Knoten k : children)
+				k.parent = this;
+		}
+		return children;
 	}
 }

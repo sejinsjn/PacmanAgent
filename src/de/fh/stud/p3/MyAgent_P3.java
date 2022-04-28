@@ -8,6 +8,7 @@ import de.fh.pacman.enums.PacmanActionEffect;
 import de.fh.pacman.enums.PacmanTileType;
 import de.fh.stud.p2.Knoten;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -22,8 +23,7 @@ public class MyAgent_P3 extends PacmanAgent_2021 {
 	 * Der gefundene Lösungknoten der Suche
 	 */
 	private Knoten loesungsKnoten;
-	private List<Knoten> loesungsweg = null;
-	private int a = 0;
+	private List<Knoten> loesungsweg;
 	
 	public MyAgent_P3(String name) {
 		super(name);
@@ -50,12 +50,13 @@ public class MyAgent_P3 extends PacmanAgent_2021 {
 			 * TODO Praktikum 3 [3]: Übergebt hier der Suche die notwendigen Informationen, um
 			 * von einem Startzustand zu einem Zielzustand zu gelangen.
 			 */
+			Knoten start = new Knoten(percept.getView(), percept.getPosX(), percept.getPosY());
+			Suche suche = new Suche(start);
 			/*
 			 * TODO Praktikum 4 [2]: Entscheidet hier welches Suchverfahren ausgeführt werden soll.
 			 */
-			Suche suche = new Suche();
-			Knoten start = new Knoten(null, percept.getView(), percept.getPosX(), percept.getPosY());
-			loesungsKnoten = suche.start(start);
+			loesungsKnoten = suche.start(5);
+			loesungsweg = new ArrayList<>();
 		}
 		
 		//Wenn die Suche eine Lösung gefunden hat, dann ermittle die als nächstes auszuführende Aktion
@@ -64,17 +65,20 @@ public class MyAgent_P3 extends PacmanAgent_2021 {
 			 * TODO Praktikum 3 [4]: Ermittelt hier die als naechstes auszufuehrende Aktion,
 			 * basierend auf dem loesungsknoten und weist diese nextAction zu.
 			 */
-			loesungsweg = new LinkedList<>();
-			while(loesungsKnoten != null){
-				loesungsweg.add(loesungsKnoten);
-				loesungsKnoten = loesungsKnoten.getVorgaenger();
+			if(loesungsweg.isEmpty()){
+				while (loesungsKnoten.getParent() != null){
+					loesungsweg.add(loesungsKnoten);
+					loesungsKnoten = loesungsKnoten.getParent();
+				}
 			}
-			if(loesungsweg != null && a < loesungsweg.size()){
-				if(percept.getPosX() < loesungsweg.get(a).getPosX()) nextAction = PacmanAction.GO_WEST;
-				else if (percept.getPosX() > loesungsweg.get(a).getPosX()) nextAction = PacmanAction.GO_EAST;
-				else if(percept.getPosY() > loesungsweg.get(a).getPosY()) nextAction = PacmanAction.GO_SOUTH;
-				else if(percept.getPosY() < loesungsweg.get(a).getPosY()) nextAction = PacmanAction.GO_NORTH;
-				a++;
+
+			if(loesungsweg != null){
+				Knoten temp = loesungsweg.remove(loesungsweg.size()-1);
+				if (percept.getPosY() == temp.getPosY() && percept.getPosX() == temp.getPosX()) nextAction = PacmanAction.WAIT;
+				if (percept.getPosY() < temp.getPosY() && percept.getPosX() == temp.getPosX()) nextAction = PacmanAction.GO_SOUTH;
+				if (percept.getPosY() > temp.getPosY() && percept.getPosX() == temp.getPosX()) nextAction = PacmanAction.GO_NORTH;
+				if (percept.getPosY() == temp.getPosY() && percept.getPosX() < temp.getPosX()) nextAction = PacmanAction.GO_EAST;
+				if (percept.getPosY() == temp.getPosY() && percept.getPosX() > temp.getPosX()) nextAction = PacmanAction.GO_WEST;
 			}
 		}
 		

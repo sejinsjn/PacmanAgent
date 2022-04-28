@@ -20,7 +20,7 @@ public class BaumTest {
 		 * TODO Praktikum 2 [3]: Baut hier basierend auf dem gegebenen 
 		 * Anfangszustand (siehe view, posX und posY) den Suchbaum auf.
 		 */
-		Knoten start = new Knoten(null, view, posX, posY);
+		Knoten start = new Knoten(view, posX, posY);
 		List<Knoten> nachfolger = start.expand();
 		int size = nachfolger.size();
 
